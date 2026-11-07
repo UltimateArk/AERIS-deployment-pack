@@ -112,10 +112,15 @@ async function init() {
       console.error(`[worker] failed to load clf_f${code}.onnx:`, e.message);
     }
   }
-  rulSession = await ort.InferenceSession.create(
-    path.join(C.paths.models, "rul.onnx"),
-    opts,
-  );
+  rulSession = null;
+  try {
+    rulSession = await ort.InferenceSession.create(
+      path.join(C.paths.models, "rul.onnx"),
+      opts,
+    );
+  } catch (e) {
+    console.error("[worker] failed to load rul.onnx (analytic RUL fallback):", e.message);
+  }
   ready = true;
   parentPort.postMessage({
     kind: "ready",
@@ -275,13 +280,20 @@ function trend(ts) {
 
 async function runRul(ts) {
   // Analytic life model sets displayed RUL.
-  // ONNX output stays for comparison.
+  // ONNX output stays for comparison (null when model missing/invalid).
   const n = Math.round((C.RUL_WINDOW_MS / 1000) * C.TICK_HZ);
   const x = F.buildWindowVector(ring, n, 30); // every 30 ticks, 3 s
-  const out = await rulSession.run({
-    input: new ort.Tensor("float32", x, [1, x.length]),
-  });
-  const v = out.variable.data[0];
+  let v = null;
+  if (rulSession) {
+    try {
+      const out = await rulSession.run({
+        input: new ort.Tensor("float32", x, [1, x.length]),
+      });
+      v = out.variable.data[0];
+    } catch (e) {
+      console.error("[worker] rul inference failed (analytic fallback):", e.message);
+    }
+  }
   const rpm = ring.get(F.IDX.rpm, 0);
   const load = ring.get(F.IDX.load_cmd, 0);
   const rNow = dutyRate(rpm, load);
