@@ -1,0 +1,20 @@
+{
+  "name": "aeris-backend",
+  "version": "1.0.0",
+  "description": "AERIS backend: WS ingest, protobuf, ring buffer, ONNX worker, SQLite + disk WAL spill, mission replay",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "selftest": "node scripts/selftest.js",
+    "sim": "node sim/twin_sim.js",
+    "sim:fault": "node sim/twin_sim.js --fault"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "onnxruntime-node": "^1.30.0",
+    "protobufjs": "^8.8.0",
+    "ws": "^8.22.0"
+  }
+}

@@ -1,0 +1,26 @@
+numpy==2.5.3
+pandas==3.0.5
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+tqdm==4.70.0
+scikit-learn==1.9.0
+joblib==1.6.0
+websockets==17.1  # integration test client only
+pyarrow==25.0.1  # parquet dataset I/O
+onnxruntime==1.30.0  # live_reference + model verification (backend uses onnxruntime-node)
+skl2onnx==1.20.0  # training-time export only (ML dev)
+# Frontend: Node 22 + npm
+#   cd Frontend && npm install && npm run dev  (http://localhost:8443)
+# Backend engine (from repo root):
+#   py -m uvicorn Backend.api:app --port 8000 --host 0.0.0.0
+# Backend aeris (Node, from Backend/aeris): npm install && npm start
+# Bridge (twin -> aeris): node Backend/aeris/scripts/bridge.js
+# ML training (local-only, from repo root, one model at a time, verify gates):
+#   python _local/train_anomaly.py && python _local/train_classifier.py && python _local/train_rul.py
+#   python _local/live_reference.py  (latency + wiring proof)
+# Dataset regen: python _local/generate_dataset.py -o _local/engine_dataset.parquet
+# Sample pack: python _local/make_sample.py
+# Optional hardware deps (idle adapters import gracefully without them):
+# python-can  # SocketCAN ingest (Backend/ingest_can.py)
+# pyserial    # ECU serial HIL (Backend/ecu_fadec.py)
+# pymodbus    # ECU Modbus HIL (Backend/ecu_fadec.py)

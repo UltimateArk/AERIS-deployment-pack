@@ -1,0 +1,152 @@
+{
+  "0": {
+    "code": 0,
+    "name": "HEALTHY",
+    "description": "Engine operating within normal limits. All 14 parameters in green band.",
+    "likely_cause": "No fault. Normal combustion, lubrication, air flow and electrical.",
+    "rectification": "No action. Continue mission.",
+    "severity": "none",
+    "action_priority": "NONE",
+    "subsystem": "none"
+  },
+  "1": {
+    "code": 1,
+    "name": "MISFIRE - Cylinder Combustion Failure",
+    "description": "One cylinder failed to fire (see faultCyl 1-4). That cylinder EGT dropped 40-60C, vibration spiked, CHT down ~18%. Intermittent power loss.",
+    "likely_cause": "Spark plug fouling, ignition coil failure, injector clog on one cylinder, or lean misfire. wear: plugHealth below 0.15 triggers this from degradation.",
+    "rectification": "1. Check ignition and spark plugs. 2. Run mag check (L/R). 3. Enrich mixture slightly. 4. If persists reduce load to 50% and RTB. Replace plug/coil on ground.",
+    "severity": "HIGH",
+    "action_priority": "REDUCE POWER - RTB",
+    "subsystem": "comb"
+  },
+  "2": {
+    "code": 2,
+    "name": "INJECTOR_CLOG - Single-Cylinder Injector Clog",
+    "description": "One injector restricted (see faultCyl 1-4). Total fuel down ~25%, that cylinder EGT down ~40C, EGT spread jumps, BSFC rises. Power droop at constant throttle.",
+    "likely_cause": "Contaminated fuel, clogged injector nozzle, fuel filter loading, vapour lock on one feed.",
+    "rectification": "1. Enable boost pump. 2. Check fuel pressure and filter differential. 3. Reduce power demand and monitor EGT. 4. Land: purge lines, replace filter/injector.",
+    "severity": "MEDIUM-HIGH",
+    "action_priority": "SWITCH PUMP - MONITOR",
+    "subsystem": "comb"
+  },
+  "3": {
+    "code": 3,
+    "name": "FUEL_PUMP - Fuel Pump Degradation",
+    "description": "Fuel delivery failing globally: flow down up to 45% vs demand, MAP droop, power loss across all cylinders. EGT spread stays normal (all cylinders starve together).",
+    "likely_cause": "Fuel pump wear, filter blockage, air-lock in feed line, tank venting issue. wear: filterClog above 0.7 triggers this from degradation.",
+    "rectification": "1. Switch to backup fuel pump immediately. 2. Check fuel pressure. 3. Increase throttle margin and monitor EGT (must not exceed 850C). 4. Land and overhaul fuel system.",
+    "severity": "MEDIUM-HIGH",
+    "action_priority": "BACKUP PUMP - LAND SOON",
+    "subsystem": "comb"
+  },
+  "4": {
+    "code": 4,
+    "name": "OIL_LOW - Catastrophic Lubrication Failure",
+    "description": "Oil pressure collapsed to 0.5-0.9 bar (normal 3.5-4.2 bar) and oil temperature rising ~14C above target. Imminent bearing seizure risk.",
+    "likely_cause": "Oil pump failure, oil line leak, clogged filter, or low oil quantity. wear: oilHealth below 0.2 triggers this from degradation.",
+    "rectification": "1. Reduce power to idle (RPM <3000) immediately. 2. Check oil quantity and lines. 3. Abort mission and RTB. 4. Ground inspection: replace pump/filter, check bearing wear.",
+    "severity": "CRITICAL",
+    "action_priority": "LAND IMMEDIATELY",
+    "subsystem": "oil"
+  },
+  "5": {
+    "code": 5,
+    "name": "BEARING_WEAR - Main Bearing Degradation",
+    "description": "Bearing wear signature: vibration RMS climbing with oil temperature rise. Progressive - worsens with hours. Often follows sustained low-oil operation (cascade from fault 4).",
+    "likely_cause": "Prolonged marginal lubrication, oil contamination, fatigue after long hours. Frequently cascades from OIL_LOW sustained over 60s.",
+    "rectification": "1. Reduce load immediately to limit further wear. 2. Monitor vibration trend - abort if accelerating. 3. RTB. 4. Ground: oil spectrometric analysis, inspect/replace bearings.",
+    "severity": "HIGH",
+    "action_priority": "REDUCE LOAD - RTB",
+    "subsystem": "vib"
+  },
+  "6": {
+    "code": 6,
+    "name": "LOW_COMPRESSION - Worn Rings / Valve Leak",
+    "description": "Cylinder compression loss: MAP down ~0.22 bar, fuel consumption up ~22% for same power, CHT down ~14%, vibration up. Slow power loss, hard starting.",
+    "likely_cause": "Worn piston rings, valve seat wear, head gasket leak, cylinder wall scoring after long hours. wear: ringWear above 0.8 triggers this from degradation.",
+    "rectification": "1. Perform compression test (should be >6 bar). 2. Limit max power to 75% to limit blow-by. 3. Plan early RTB - fault worsens with time. 4. Ground: overhaul top end, replace rings/valves, hone cylinder.",
+    "severity": "MEDIUM",
+    "action_priority": "POWER LIMIT - OVERHAUL SOON",
+    "subsystem": "comb"
+  },
+  "7": {
+    "code": 7,
+    "name": "COOLING_FAIL - Cooling System Failure",
+    "description": "Cooling circuit failed: CHT spiking +65C and oil temperature +26C above normal for same RPM/load. Exhaust also +32C. Overheat risk - cascade to OVERHEAT if sustained.",
+    "likely_cause": "Coolant leak, water pump failure, thermostat stuck, radiator blockage, cooling fan failure. wear: coolantHealth below 0.2 triggers this from degradation.",
+    "rectification": "1. Reduce power to 40% immediately to cut heat. 2. Open backup cooling / increase airflow. 3. Monitor CHT - if >280C land immediately. 4. Ground: pressure test cooling circuit, refill coolant, replace pump/thermostat.",
+    "severity": "HIGH",
+    "action_priority": "REDUCE POWER - COOLING CHECK",
+    "subsystem": "cool"
+  },
+  "8": {
+    "code": 8,
+    "name": "OVERHEAT - Sustained Overheat Condition",
+    "description": "Cylinder head temperature sustained above 280C. Distinct from circuit failure: this is the thermal CONDITION (hot day + high load + degraded cooling combining). Detonation and seizure risk.",
+    "likely_cause": "Prolonged high load in hot/high conditions, degraded cooling, lean mixture. Frequently cascades from COOLING_FAIL sustained over 60s.",
+    "rectification": "1. Reduce power and enrich mixture immediately. 2. Descend to cooler denser air if altitude allows. 3. If CHT keeps climbing, land immediately. 4. Ground: borescope pistons, verify cooling circuit.",
+    "severity": "HIGH",
+    "action_priority": "COOL DOWN OR LAND",
+    "subsystem": "cool"
+  },
+  "9": {
+    "code": 9,
+    "name": "KNOCK - Detonation / Abnormal Combustion",
+    "description": "Early ignition: CHT +42C, EGT +28C, oil temp +10C, sharp knocking vibration +0.14g. Occurs at high load/lean mixture. Detonation can crack pistons. Often follows sustained OVERHEAT.",
+    "likely_cause": "Over-advanced ignition timing, low octane fuel, excessive CHT, lean AFR + high load, carbon hot-spot in chamber.",
+    "rectification": "1. Retard ignition timing 2-4 deg. 2. Enrich mixture (AFR 12.5-13) and reduce load 20%. 3. Reduce CHT below 250C. 4. Land, borescope piston, drain fuel and refill high-octane, check timing.",
+    "severity": "CRITICAL",
+    "action_priority": "RETARD TIMING - ENRICH",
+    "subsystem": "comb"
+  },
+  "10": {
+    "code": 10,
+    "name": "INJ_TIMING - Wrong Injection Timing",
+    "description": "Injection timing off nominal (advance/retard with jitter). Efficiency loss, knock or misfire tendency, EGT shift (retard heats exhaust). Timing dial shows the error.",
+    "likely_cause": "ECU map error, crank position sensor drift, wiring fault, incorrect maintenance setting.",
+    "rectification": "1. Verify timing against spec (20 deg nominal). 2. Check crank position sensor and wiring. 3. Re-time injection on ground, recalibrate ECU map.",
+    "severity": "MEDIUM",
+    "action_priority": "RE-TIME - INSPECT",
+    "subsystem": "comb"
+  },
+  "11": {
+    "code": 11,
+    "name": "BACK_PRESS - Exhaust / Turbo Blockage",
+    "description": "Exhaust back pressure raised MAP by +0.45 bar and EGT by +110C. Engine breathing restricted, turbo efficiency low. CONFLICTS with fault 6 (opposite MAP effects) - never injected together.",
+    "likely_cause": "Cracked muffler, carbon build-up in exhaust, turbo waste-gate stuck closed, foreign object in intake.",
+    "rectification": "1. Reduce RPM to <4000 to limit EGT. 2. Check exhaust for blockage/leaks and turbo boost. 3. Open waste-gate manually if possible. 4. RTB and borescope exhaust/turbo on ground.",
+    "severity": "MEDIUM",
+    "action_priority": "REDUCE RPM - INSPECT",
+    "subsystem": "comb"
+  },
+  "12": {
+    "code": 12,
+    "name": "ALT_FAIL - Alternator / Battery Failure",
+    "description": "Electrical generation failed: alternator current collapsed, battery voltage sagging toward 20V (nominal 28V). Limited battery-only flight time remaining.",
+    "likely_cause": "Alternator failure, voltage regulator fault, drive belt failure, aged battery. wear: altHealth below 0.3 triggers this from degradation.",
+    "rectification": "1. Shed all non-essential electrical load immediately. 2. Note battery voltage - plan RTB within battery endurance. 3. Ground: test alternator/regulator, replace belt/battery.",
+    "severity": "MEDIUM",
+    "action_priority": "SHED LOAD - RTB ON BATTERY",
+    "subsystem": "elec"
+  },
+  "13": {
+    "code": 13,
+    "name": "SENSOR_DRIFT - Sensor Bias / Failure",
+    "description": "One sensor reading drifting from truth while all other channels stay normal (classic sensor-not-engine fault - tests fault-tolerant logic). Example: MAP reads ~0.55 bar high. Check sensor_id for the affected channel.",
+    "likely_cause": "Sensor calibration drift, wiring resistance increase, connector corrosion, moisture ingress. Often after vibration/thermal cycling.",
+    "rectification": "1. Cross-check against model expectation (if one channel disagrees with all others, suspect the sensor). 2. Switch to redundant sensor if available. 3. Recalibrate or replace sensor on ground. 4. Do not abort on this alone - continue degraded, log it.",
+    "severity": "LOW",
+    "action_priority": "CROSS-CHECK - RECALIBRATE",
+    "subsystem": "none"
+  },
+  "14": {
+    "code": 14,
+    "name": "EGT_IMBALANCE - Multi-Cylinder EGT Spread",
+    "description": "Exhaust temperatures spread wide across cylinders (high egtSpread) without a single dead hole: uneven fuel/air distribution, developing multi-cylinder issue.",
+    "likely_cause": "Injector flow imbalance across cylinders, intake leak on one bank, valve clearance differences, early multi-cylinder degradation.",
+    "rectification": "1. Note spread trend - growing spread means developing fault. 2. Balance check: injector flow test all four. 3. Intake leak test. 4. Ground: service injectors, check valve clearances.",
+    "severity": "MEDIUM",
+    "action_priority": "BALANCE CHECK - MONITOR TREND",
+    "subsystem": "comb"
+  }
+}

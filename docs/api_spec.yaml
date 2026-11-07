@@ -1,0 +1,96 @@
+openapi: 3.0.0
+info:
+  title: Piston Engine Digital Twin API (engine -> frontend surface)
+  version: 2.2.0
+  description: >
+    One-way pipe engine_model.py v2.2 -> frontend. ML inference, Checker,
+    persistence, replay and auth live in aeris-backend (Backend/Backend dev).
+    Merge points are marked BACKEND-DEV MERGE in Backend/api.py.
+servers:
+  - url: http://localhost:8000
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: ok, returns {"status","running","version"}
+  /engine/start:
+    post:
+      summary: Begin new mission (fresh mission_id + time origins, wear kept)
+      responses:
+        '200':
+          description: running, returns {"status","mission_id","mission_t0_wall"}
+  /engine/stop:
+    post:
+      summary: Pause (mission stays open, state frozen)
+      responses:
+        '200': {description: stopped}
+  /engine/set_controls:
+    post:
+      summary: Set rpm/load/afr/cooling/injTiming/altitude/ambientT/ambientP/humidity
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rpm: {type: number, minimum: 0, maximum: 10000}
+                load: {type: number, minimum: 0, maximum: 100}
+                afr: {type: number, minimum: 12, maximum: 16}
+                cooling: {type: number, minimum: 0, maximum: 1}
+                injTiming: {type: number, minimum: 10, maximum: 30}
+                altitude: {type: number, minimum: 0, maximum: 15000}
+                ambientT: {type: number, minimum: -20, maximum: 55}
+                ambientP: {type: number, minimum: 50, maximum: 110}
+                humidity: {type: number, minimum: 0, maximum: 100}
+      responses: {'200': {description: controls updated}}
+  /engine/set_env:
+    post:
+      summary: Environment-only alias of set_controls
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                altitude: {type: number}
+                ambientT: {type: number}
+                ambientP: {type: number}
+                humidity: {type: number}
+      responses: {'200': {description: env updated}}
+  /engine/fault:
+    post:
+      summary: Inject/clear one fault (calls ACCUMULATE for multi-fault)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [faultId, enabled]
+              properties:
+                faultId: {type: integer, minimum: 0, maximum: 14, description: "0 none, 1 misfire, 2 injector-clog, 3 fuel-pump, 4 oil-low, 5 bearing-wear, 6 low-compression, 7 cooling-fail, 8 overheat, 9 knock, 10 inj-timing, 11 back-press, 12 alt-fail, 13 sensor-drift, 14 egt-imbalance"}
+                enabled: {type: boolean}
+                magnitude: {type: number, minimum: 0, maximum: 1, default: 1.0}
+                cyl: {type: integer, minimum: 0, maximum: 4, default: 0, description: "cylinder for faults 1-2"}
+                sensor_id: {type: string, description: "channel for fault 13"}
+      responses:
+        '200': {description: fault updated, returns {status, active, primary}}
+        '422': {description: faultId outside 0-14, magnitude outside 0.0-1.0, or cyl outside 0-4}
+  /engine/faults/clear:
+    post:
+      summary: Clear all faults (latched auto-fires stay latched)
+      responses: {'200': {description: cleared}}
+  /engine/faults:
+    get:
+      summary: List active faults
+      responses:
+        '200':
+          description: ok, returns {"active": {code: mag}, "primary": code, "origin": {code: manual|cascade|degradation}}
+  /engine:
+    get:
+      summary: WebSocket stream (WS, not REST) - connect ws://localhost:8000/engine, server pushes v2.2 state at 100 Hz while running (see ws_message_schema.json)
+      responses: {'101': {description: switching protocols}}

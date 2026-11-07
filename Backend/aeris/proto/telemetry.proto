@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+message Telemetry {
+  string mission_id = 1;
+  double ts = 2;              // epoch ms from the digital twin
+  bool end_of_mission = 3;
+  double rpm = 4;
+  double cht = 5;
+  double egt = 6;
+  double egt1 = 7;
+  double egt2 = 8;
+  double egt3 = 9;
+  double egt4 = 10;
+  double egtSpread = 11;
+  double map = 12;
+  double oilPressure = 13;
+  double oilTemp = 14;
+  double fuelFlow = 15;
+  double vibX = 16;
+  double vibY = 17;
+  double vibZ = 18;
+  double vibRMS = 19;
+  double battV = 20;
+  double altA = 21;
+  double injTiming = 22;
+  double powerKw = 23;
+  double bsfc = 24;
+  double physRes = 25;
+  double altitude = 26;
+  double ambientT = 27;
+  double ambientP = 28;
+  double humidity = 29;
+  double rpm_cmd = 30;
+  double load_cmd = 31;
+  // physics-model expected values keyed by channel: cht, egt1..egt4, map, oilPressure, oilTemp, vibRMS, altA, battV, injTiming, egtSpread
+  map<string,double> expected = 32;
+}

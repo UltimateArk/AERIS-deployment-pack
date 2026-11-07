@@ -1,0 +1,10 @@
+{
+  "_doc": "M4 trend thresholds (rate-of-change per 10Hz tick). Rules, not learning: no training, no model file. Backend evaluates these on live ROC features every slow tick (0.2Hz).",
+  "cht_roc_rising": 0.02,
+  "cht_roc_unit": "C per tick @10Hz (=0.2 C/s)",
+  "oilT_roc_rising": 0.01,
+  "oilT_roc_unit": "C per tick @10Hz (=0.1 C/s)",
+  "egt_roc_rising": 0.02,
+  "egt_roc_unit": "C per tick @10Hz (=0.2 C/s)",
+  "rule": "roc > +thr sustained = RISING, roc < -thr sustained = FALLING, else STABLE. Sustained = 5 consecutive slow ticks. Prognosis consumes RISING + time-to-limit."
+}

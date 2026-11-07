@@ -1,0 +1,23 @@
+{
+  "threshold": 4.401386260986328,
+  "features": [
+    "cht_r",
+    "egt1_r",
+    "egt2_r",
+    "egt3_r",
+    "egt4_r",
+    "map_r",
+    "oilP_r",
+    "oilT_r",
+    "vib_r",
+    "altA_r",
+    "battV_r",
+    "injT_r",
+    "spread_r",
+    "egt1_d",
+    "egt2_d",
+    "egt3_d",
+    "egt4_d"
+  ],
+  "live": "z = (x - mean_) / scale_; anomaly = max|z| > threshold"
+}

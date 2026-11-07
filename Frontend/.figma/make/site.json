@@ -1,0 +1,10 @@
+{
+  "description": "Monitor and analyze MALE UAV engine health with real-time data, fault detection, and actionable insights for mission-critical decision making.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

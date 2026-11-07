@@ -1,0 +1,251 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Allerta+Stencil&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Barlow Semi Condensed', ui-sans-serif, system-ui, sans-serif;
+  --font-cond: 'Barlow Semi Condensed', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-stencil: 'Allerta Stencil', ui-sans-serif, sans-serif;
+
+  /* Backgrounds */
+  --color-page: #d6dbe1;
+  --color-header: #e1e5ea;
+  --color-panel: #e7ebef;
+  --color-inset: #dce1e6;
+  --color-chip: #d3d9df;
+  --color-slider-track: #b8c1cb;
+  /* legacy alias used across components */
+  --color-panel-2: #dce1e6;
+
+  /* Borders */
+  --color-line: #9aa6b2;
+  --color-line-soft: #b4bec8;
+
+  /* Text */
+  --color-ink: #1a222b;
+  --color-ink-2: #4f5d6b;
+  --color-title: #2b3a4a;
+  --color-on-dark: #eef1f4;
+  --color-on-dark-2: #c3cdd8;
+
+  /* Buttons */
+  --color-button: #2b3a4a;
+  --color-button-text: #eef1f4;
+  /* legacy aliases (previously olive drab) now map to primary button */
+  --color-drab: #2b3a4a;
+  --color-drab-2: #202b37;
+
+  /* Accents */
+  --color-accent-cht: #b45f06;
+  --color-accent-load: #b45f06;
+  --color-accent-egt: #b3261e;
+  --color-accent-oil-press: #b3261e;
+  --color-accent-fuel: #2e7d4f;
+  --color-accent-oil-p: #6b4fbb;
+  --color-accent-oil-temp: #0f7a73;
+  --color-accent-map: #1f62a8;
+  --color-accent-rpm: #1f62a8;
+
+  /* Status */
+  --color-ok: #2e7d4f;
+  --color-ok-tint: rgba(46, 125, 79, 0.15);
+  --color-caution: #b36b00;
+  --color-crit: #b3261e;
+}
+
+/* Dark theme: same layout, only colors change. Toggled by the header button
+   next to Mission ID (App sets data-theme on <html>). */
+:root[data-theme="dark"] {
+  --color-page: #0d1117;
+  --color-header: #141a22;
+  --color-panel: #161d27;
+  --color-inset: #10161f;
+  --color-chip: #1e2734;
+  --color-slider-track: #2a3542;
+  --color-panel-2: #10161f;
+  --color-line: #37455a;
+  --color-line-soft: #28323f;
+  --color-ink: #dbe4ee;
+  --color-ink-2: #8e9aad;
+  --color-title: #e6ecf3;
+  --color-on-dark: #eef1f4;
+  --color-on-dark-2: #c3cdd8;
+  --color-button: #2b3a4a;
+  --color-button-text: #eef1f4;
+  --color-drab: #2b3a4a;
+  --color-drab-2: #3a4b60;
+  --color-accent-cht: #f2994a;
+  --color-accent-load: #f2994a;
+  --color-accent-egt: #ef5a52;
+  --color-accent-oil-press: #ef5a52;
+  --color-accent-fuel: #4ade80;
+  --color-accent-oil-p: #a78bfa;
+  --color-accent-oil-temp: #2dd4bf;
+  --color-accent-map: #61a8e8;
+  --color-accent-rpm: #61a8e8;
+  --color-ok: #4ade80;
+  --color-ok-tint: rgba(74, 222, 128, 0.12);
+  --color-caution: #f5b83d;
+  --color-crit: #ef5a52;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Default scrollbars: hidden until hover */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+*:hover {
+  scrollbar-color: var(--color-line) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+*:hover::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+}
+
+/* Always-visible tactical scrollbar for primary scroll regions */
+.scroll-y {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) var(--color-slider-track);
+}
+.scroll-y::-webkit-scrollbar {
+  width: 11px;
+}
+.scroll-y::-webkit-scrollbar-track {
+  background: var(--color-slider-track);
+  border-left: 1px solid var(--color-line-soft);
+}
+.scroll-y::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border: 2px solid var(--color-slider-track);
+}
+.scroll-y:hover::-webkit-scrollbar-thumb {
+  background: var(--color-title);
+}
+
+/* Range slider (control bars) */
+input[type='range'].bar {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--color-slider-track);
+  border: 1px solid var(--color-line);
+  outline: none;
+}
+input[type='range'].bar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 16px;
+  background: var(--color-button);
+  border: 1px solid var(--color-drab-2);
+  cursor: pointer;
+}
+input[type='range'].bar::-moz-range-thumb {
+  width: 11px;
+  height: 16px;
+  border-radius: 0;
+  background: var(--color-button);
+  border: 1px solid var(--color-drab-2);
+  cursor: pointer;
+}
+
+@keyframes blip {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+.animate-blip {
+  animation: blip 1.4s ease-in-out infinite;
+}
+
+/* Screen transition: login -> console slides in from the right; the login
+   gate fades up. No route swap, so it reads as one continuous console. */
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes gate-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.screen-in {
+  animation: screen-in 0.35s ease-out both;
+}
+.gate-in {
+  animation: gate-in 0.25s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen-in,
+  .gate-in {
+    animation: none;
+  }
+}
+
+/* Mission report print path (browser Print -> Save as PDF) */
+@media print {
+  button,
+  input[type="range"] {
+    display: none !important;
+  }
+  .animate-blip {
+    animation: none !important;
+  }
+}
+
+/* 3D expand preview: grows from its top-left home, shrinks back on close */
+@keyframes aeris-pop-in {
+  from { opacity: 0; transform-origin: top left; transform: scale(0.92) translate(-10px, -10px); }
+  to { opacity: 1; transform-origin: top left; transform: none; }
+}
+@keyframes aeris-pop-out {
+  from { opacity: 1; transform-origin: top left; transform: none; }
+  to { opacity: 0; transform-origin: top left; transform: scale(0.92) translate(-10px, -10px); }
+}
+@keyframes aeris-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes aeris-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}

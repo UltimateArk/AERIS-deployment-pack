@@ -1,0 +1,77 @@
+# AERIS Render blueprint — split hosting (free tier compatible).
+# Deploy: Render Dashboard > New > Blueprint > select this repo.
+# Then wire URLs per RENDER_DEPLOY.md (two-pass env setup).
+services:
+  # 1/4 Twin physics (public WS + REST for bridge + frontend direct link)
+  - type: web
+    name: aeris-twin
+    runtime: python
+    plan: free
+    healthCheckPath: /health
+    buildCommand: pip install -r Backend/requirements.txt
+    startCommand: uvicorn Backend.api:app --host 0.0.0.0 --port $PORT
+    envVars: []
+
+  # 2/4 Aeris backend (public REST+WS for frontend, ingest WS on /ingest)
+  # Single-port mode auto-activates when only $PORT is set (see src/config.js).
+  - type: web
+    name: aeris-backend
+    runtime: node
+    plan: free
+    rootDir: Backend/aeris
+    healthCheckPath: /health
+    buildCommand: >-
+      npm install &&
+      mkdir -p models config data/spill &&
+      cp ../../ML_Models/clf_*.onnx models/ &&
+      cp ../../ML_Models/rul.onnx models/ &&
+      cp ../../ML_Models/calibrators.json config/ &&
+      cp ../../ML_Models/feature_list.json config/ &&
+      cp ../../ML_Models/scaler_anomaly.json config/ &&
+      cp ../../ML_Models/threshold_anomaly.json config/ &&
+      cp ../../ML_Models/trend_config.json config/ &&
+      cp ../../Database/fault_catalog.json config/ &&
+      ls models | head -20
+    startCommand: npm start
+    envVars:
+      - key: ENGINE_REST
+        value: https://aeris-twin.onrender.com
+        sync: false
+      - key: NODE_VERSION
+        value: "22"
+
+  # 3/4 Bridge twin -> aeris (no public port, internal worker)
+  - type: worker
+    name: aeris-bridge
+    runtime: node
+    plan: free
+    rootDir: Backend/aeris
+    buildCommand: npm install
+    startCommand: node scripts/bridge.js
+    envVars:
+      - key: ENGINE_WS
+        value: wss://aeris-twin.onrender.com/engine
+        sync: false
+      - key: INGEST_WS
+        value: wss://aeris-backend.onrender.com/ingest
+        sync: false
+
+  # 4/4 Frontend (static)
+  - type: static
+    name: aeris-console
+    buildCommand: npm install && npm run build
+    rootDir: Frontend
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE
+        value: https://aeris-backend.onrender.com
+        sync: false
+      - key: VITE_WS_URL
+        value: wss://aeris-backend.onrender.com/
+        sync: false
+      - key: VITE_TWIN_BASE
+        value: https://aeris-twin.onrender.com
+        sync: false
+      - key: VITE_TWIN_WS
+        value: wss://aeris-twin.onrender.com/engine
+        sync: false
