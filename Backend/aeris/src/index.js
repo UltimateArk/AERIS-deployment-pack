@@ -97,7 +97,8 @@ feWss.on("connection", (ws, req) => {
   ws.on("close", () => { lastFrontendSeen = Date.now(); });
 });
 
-const CLIENT_LOST_GRACE_MS = 8000;
+const CLIENT_LOST_GRACE_MS = +process.env.CLIENT_LOST_GRACE_MS ||
+  (C.SINGLE_PORT ? 120000 : 8000); // hosted WS survives tab-throttle/proxy blips
 setInterval(() => {
   if (feWss.clients.size > 0) { lastFrontendSeen = Date.now(); return; }
   if (openSession && Date.now() - lastFrontendSeen > CLIENT_LOST_GRACE_MS) {
