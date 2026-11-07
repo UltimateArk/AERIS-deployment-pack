@@ -28,8 +28,9 @@ export default function App() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [checking, setChecking] = useState(true);
   // Theme state at app root. Shared by login, console, and replay.
+  // Default is dark; only an explicit stored "light" opts out.
   const [dark, setDark] = useState(() => {
-    try { return localStorage.getItem("aeris.theme") === "dark"; } catch { return false; }
+    try { return localStorage.getItem("aeris.theme") !== "light"; } catch { return true; }
   });
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
@@ -414,6 +415,7 @@ function Console({
               engineOnRef={twin.engineOnRef}
               dark={dark}
               missionName={session.name}
+              awaitingMission={awaitingMission}
             />
           </div>
           <div className="min-h-0 min-w-0">

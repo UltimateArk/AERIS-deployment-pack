@@ -73,6 +73,7 @@ function EnginePanelImpl({
   engineOnRef,
   dark,
   missionName,
+  awaitingMission,
 }: {
   phase: "idle" | "running";
   controls: Controls;
@@ -83,6 +84,7 @@ function EnginePanelImpl({
   engineOnRef: React.RefObject<boolean>;
   dark: boolean;
   missionName: string;
+  awaitingMission: boolean;
 }) {
   const running = phase === "running";
   // Shared with the 3D canvas for orbit reset without re-renders.
@@ -198,7 +200,7 @@ function EnginePanelImpl({
             tone="drab"
             className="flex-1 !py-1.5 !text-[13px]"
           >
-            ▶ Start Engine
+            {awaitingMission ? "▷ Start new mission" : "▶ Start Engine"}
           </TacticalButton>
         )}
         {phase === "running" && (
