@@ -1,0 +1,8 @@
+# Twin runtime-only deps for Render (free).
+# Backend/requirements.txt includes training/analysis extras
+# (pandas, sklearn, pyarrow, onnxruntime, pinned numpy==2.5.3)
+# that break or OOM the free builder. The twin itself
+# (Backend/api.py + engine_model.py) imports only numpy + fastapi + uvicorn.
+numpy>=2.0
+fastapi>=0.115
+uvicorn[standard]>=0.30

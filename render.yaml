@@ -8,9 +8,11 @@ services:
     runtime: python
     plan: free
     healthCheckPath: /health
-    buildCommand: pip install -r Backend/requirements.txt
+    buildCommand: pip install -r Backend/requirements.render.txt
     startCommand: uvicorn Backend.api:app --host 0.0.0.0 --port $PORT
-    envVars: []
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
 
   # 2/3 Aeris backend + bridge in one free web service.
   # Single-port mode auto-activates when only $PORT is set (see src/config.js):
@@ -53,6 +55,8 @@ services:
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: VITE_API_BASE
         value: https://aeris-backend.onrender.com
         sync: false
