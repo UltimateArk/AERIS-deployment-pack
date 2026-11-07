@@ -14,9 +14,8 @@ const t0 = Date.now();
 function connect() {
   const openDown = () => {
     down = new WebSocket(DOWN);
-    // Clears the socket on error so the watchdog can reopen it.
-    // Close handler retries the connection.
-    down.on("error", () => { down = null; });
+    down.on("open", () => console.log(`[bridge] ingest open ${DOWN}`));
+    down.on("error", (e) => { console.error(`[bridge] ingest error: ${e.message}`); down = null; });
     down.on("close", () => {
       down = null;
       setTimeout(openDown, 2000);

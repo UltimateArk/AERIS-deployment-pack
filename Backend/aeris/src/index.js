@@ -84,7 +84,10 @@ function needKey(req, res) {
 // Frontend server. Single-port PaaS mode shares one $PORT:
 // frontend WS on `/`, twin ingest WS on `/ingest`.
 const server = http.createServer(handleHttp);
-const feWss = new WebSocketServer({ server, path: "/" });
+// noServer + manual upgrade routing below (single-port) or direct attach
+// (local two-port). Two `server`-mode WSS cannot share one HTTP server:
+// the first upgrade listener 400-aborts the other's paths.
+const feWss = new WebSocketServer({ noServer: true });
 // Ends the mission when the console disconnects.
 // Short grace frames form the shutdown signature.
 let lastFrontendSeen = Date.now();
@@ -421,10 +424,26 @@ function handleIngestConnection(ws) {
 
 let ingestWss = null;
 if (C.SINGLE_PORT) {
-  ingestWss = new WebSocketServer({ server, path: "/ingest" });
+  ingestWss = new WebSocketServer({ noServer: true });
   ingestWss.on("connection", handleIngestConnection);
+  // Manual upgrade routing: /ingest -> ingest, everything else -> frontend.
+  // Lets both WebSocketServers share the single $PORT listener.
+  server.on("upgrade", (req, socket, head) => {
+    const url = req.url || "/";
+    const q = url.indexOf("?");
+    const pathname = q !== -1 ? url.slice(0, q) : url;
+    const target = pathname === "/ingest" ? ingestWss : feWss;
+    target.handleUpgrade(req, socket, head, (ws) =>
+      target.emit("connection", ws, req),
+    );
+  });
   console.log("[ingest] single-port mode: ws /ingest on same $PORT");
 } else {
+  server.on("upgrade", (req, socket, head) => {
+    feWss.handleUpgrade(req, socket, head, (ws) =>
+      feWss.emit("connection", ws, req),
+    );
+  });
   ingestWss = new WebSocketServer({ port: C.INGEST_PORT });
   ingestWss.on("connection", handleIngestConnection);
 }
