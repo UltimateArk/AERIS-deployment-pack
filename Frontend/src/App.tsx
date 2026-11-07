@@ -27,6 +27,8 @@ interface SessionInfo {
 export default function App() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [checking, setChecking] = useState(true);
+  // Someone else's open mission. Locked screen polls until it is free.
+  const [locked, setLocked] = useState<{ name: string; engineId: string } | null>(null);
   // Theme state at app root. Shared by login, console, and replay.
   // Default is dark; only an explicit stored "light" opts out.
   const [dark, setDark] = useState(() => {
@@ -45,10 +47,15 @@ export default function App() {
         try {
           const r = (await rest.sessionCurrent()) as {
             session?: { id: string; name: string; engineId: string; missionId: string };
+            owned?: boolean;
           };
           const s = r.session;
-          if (s)
-            setSession({ sessionId: s.id, name: s.name, engineId: s.engineId, missionId: s.missionId });
+          if (s) {
+            if (r.owned === false)
+              setLocked({ name: s.name, engineId: s.engineId });
+            else
+              setSession({ sessionId: s.id, name: s.name, engineId: s.engineId, missionId: s.missionId });
+          }
         } catch { }
       }
       setChecking(false);
@@ -56,13 +63,23 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const h = () => { clearToken(); setSession(null); };
+    const h = () => { clearToken(); setSession(null); setLocked(null); };
     window.addEventListener("aeris:unauthorized", h);
     return () => window.removeEventListener("aeris:unauthorized", h);
   }, []);
 
   if (checking)
     return <div className="h-screen w-full" style={{ background: "var(--color-page)" }} />;
+  if (locked)
+    return (
+      <LockedScreen
+        lock={locked}
+        dark={dark}
+        onToggleDark={toggleDark}
+        onFree={() => setLocked(null)}
+        onEnter={setSession}
+      />
+    );
   if (!session) return <LoginPage onEnter={setSession} dark={dark} onToggleDark={toggleDark} />;
   return (
     <Console
@@ -73,6 +90,66 @@ export default function App() {
       onEndMission={() => setSession(null)}
       onSessionChange={setSession}
     />
+  );
+}
+
+// Locked screen. Another console owns the open mission, so this browser
+// waits instead of driving the same twin. Polls until the mission ends,
+// then hands back to the login gate; entering directly if it is ours.
+function LockedScreen({
+  lock,
+  dark,
+  onToggleDark,
+  onFree,
+  onEnter,
+}: {
+  lock: { name: string; engineId: string };
+  dark: boolean;
+  onToggleDark: () => void;
+  onFree: () => void;
+  onEnter: (s: SessionInfo) => void;
+}) {
+  useEffect(() => {
+    let stop = false;
+    const poll = async () => {
+      try {
+        const r = (await rest.sessionCurrent()) as {
+          session?: { id: string; name: string; engineId: string; missionId: string };
+          owned?: boolean;
+        };
+        if (stop) return;
+        if (!r.session) onFree();
+        else if (r.owned !== false)
+          onEnter({ sessionId: r.session.id, name: r.session.name,
+                    engineId: r.session.engineId, missionId: r.session.missionId });
+      } catch { }
+    };
+    const id = setInterval(poll, 5000);
+    return () => { stop = true; clearInterval(id); };
+  }, [onFree, onEnter]);
+  return (
+    <div className="flex h-screen w-full flex-col items-center justify-center gap-3 p-6"
+         style={{ background: "var(--color-page)" }}>
+      <button onClick={onToggleDark} title="Toggle light / dark theme"
+        className="absolute right-6 top-5 rounded px-2 py-0.5 font-cond text-[11px] font-600 uppercase tracking-[0.08em] hover:brightness-125"
+        style={{ border: "1px solid var(--color-ok)", background: "var(--color-ok-tint)", color: "var(--color-ok)" }}>
+        {dark ? "☀" : "☾"} Theme
+      </button>
+      <h1 className="font-stencil text-[24px] tracking-wide text-[var(--color-title)]">
+        MISSION IN PROGRESS
+      </h1>
+      <p className="font-mono text-[13px] uppercase text-[var(--color-ink-2)]">
+        "{lock.name}" · {lock.engineId} · owned by another console
+      </p>
+      <p className="max-w-[420px] text-center font-mono text-[12px] text-[var(--color-ink-2)]">
+        Only the console that started the mission can drive it. This screen
+        releases automatically when the mission ends — no new mission can be
+        opened while one is in progress.
+      </p>
+      <span className="font-mono text-[12px] uppercase" style={{ color: "var(--color-caution)" }}>
+        ● waiting for the mission to end…
+      </span>
+    </div>
   );
 }
 
@@ -124,6 +201,25 @@ function Console({
     const id = setInterval(refreshMissions, 15000);
     return () => clearInterval(id);
   }, [refreshMissions]);
+
+  // Another console opened a different mission (or took over). This console
+  // is stale: step out to the login gate instead of driving the same twin.
+  const [takenOver, setTakenOver] = useState(false);
+  useEffect(() => {
+    let stop = false;
+    const poll = async () => {
+      try {
+        const r = (await rest.sessionCurrent()) as {
+          session?: { id: string };
+          owned?: boolean;
+        };
+        if (!stop && r.session && r.session.id !== session.sessionId) setTakenOver(true);
+      } catch { }
+    };
+    const id = setInterval(poll, 5000);
+    return () => { stop = true; clearInterval(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.sessionId]);
 
   // Stable array for memoized injector. Rebuilt only when the desired set changes.
   const desiredArr = useMemo(() => [...eng.desired], [eng.desired]);
@@ -321,6 +417,26 @@ function Console({
 
   return (
     <div className="screen-in flex h-screen flex-col overflow-hidden">
+      {takenOver && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+             style={{ background: "rgba(20,22,18,0.55)", backdropFilter: "blur(6px)" }}>
+          <div className="w-full max-w-[440px] p-6 text-center"
+               style={{ border: "1px solid var(--color-line)", background: "var(--color-panel)" }}>
+            <h2 className="font-stencil text-[20px] tracking-wide text-[var(--color-title)]">
+              CONSOLE SUPERSEDED
+            </h2>
+            <p className="mt-2 font-mono text-[12px] uppercase text-[var(--color-ink-2)]">
+              another console opened a mission — this view is stale and its
+              controls are disabled server-side
+            </p>
+            <button onClick={onEndMission}
+              className="mt-4 px-4 py-2 font-cond text-[13px] font-600 uppercase tracking-[0.1em] hover:brightness-110"
+              style={{ background: "var(--color-button)", color: "var(--color-button-text)" }}>
+              Return to login ▸
+            </button>
+          </div>
+        </div>
+      )}
       <header
         className="flex shrink-0 items-center justify-between gap-4 px-4 py-2"
         style={{ background: "var(--color-header)", color: "var(--color-title)", borderBottom: "1px solid var(--color-line)" }}

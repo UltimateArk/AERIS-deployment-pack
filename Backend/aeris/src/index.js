@@ -81,6 +81,26 @@ function needKey(req, res) {
   return false;
 }
 
+// Single-driver ownership. The token that opens a session owns it until
+// the session ends; other consoles get a locked screen and cannot drive.
+// Fingerprint (sha256 hex) avoids storing the token itself.
+const fpOf = (t) =>
+  require("crypto").createHash("sha256").update(String(t)).digest("hex");
+function isOwner(req) {
+  if (AUTH_DISABLED) return true;
+  if (!openSession) return true; // no session: starter-to-be
+  if (API_KEY && tokenOf(req) === API_KEY) return true; // scripts act as owner
+  const t = tokenOf(req);
+  return !!t && openSession.ownerFp === fpOf(t);
+}
+function needOwner(req, res) {
+  if (isOwner(req)) return true;
+  res.writeHead(409, { "Content-Type": "application/json",
+                       "Access-Control-Allow-Origin": "*" });
+  res.end(JSON.stringify({ error: "mission owned by another console" }));
+  return false;
+}
+
 // Frontend server. Single-port PaaS mode shares one $PORT:
 // frontend WS on `/`, twin ingest WS on `/ingest`.
 const server = http.createServer(handleHttp);
@@ -302,7 +322,7 @@ function endMission(reason) {
   }, 2500); // 2.5 second delay
 }
 
-function openPilotSession({ name, engineId, pilot }) {
+function openPilotSession({ name, engineId, pilot }, ownerFp) {
   const clean = String(name || "").trim();
   if (!clean) return { error: "mission name required" };
   const clashed = rawStore.db
@@ -321,6 +341,7 @@ function openPilotSession({ name, engineId, pilot }) {
   openSession = {
     id: sid, name: clean, engineId: engineId || "ENG-01",
     pilot: pilot || "pilot", missionId, startedAt,
+    ownerFp: ownerFp || null, // token fingerprint of the owning console
     // Recording starts on the first running frame.
     // Login time stays unrecorded.
     recorded: false,
@@ -498,13 +519,16 @@ async function handleHttp(req, res) {
       if (!t) return json({ error: "refresh denied" }, 401);
       return json({ token: t, expiresMs: auth.ACCESS_MS });
     }
-    // Tab close beacon ends the mission.
+    // Tab close beacon ends the mission, but only from the owning console.
+    // A teammate closing their locked screen must not kill the mission.
     // Token arrives in query string.
     if (url.pathname === "/api/session/abort") {
       const t = url.searchParams.get("token");
       if (t && auth.verify(t)) {
-        if (openSession) closePilotSession("client closed");
-        twinFire("POST", "/engine/stop", {});
+        if (openSession && openSession.ownerFp === fpOf(t)) {
+          closePilotSession("client closed");
+          twinFire("POST", "/engine/stop", {});
+        }
       }
       return json({ status: "ok" });
     }
@@ -518,10 +542,12 @@ async function handleHttp(req, res) {
     // Session control.
     if (url.pathname === "/api/session/start" && req.method === "POST") {
       const b = await readBody(req);
-      const out = openPilotSession(b);
+      const t = tokenOf(req);
+      const out = openPilotSession(b, t && t !== API_KEY ? fpOf(t) : null);
       return json(out, out.error ? 409 : 200);
     }
     if (url.pathname === "/api/session/end" && req.method === "POST") {
+      if (!needOwner(req, res)) return;
       const out = closePilotSession("pilot end");
       return json(out, out.error ? 409 : 200);
     }
@@ -531,6 +557,7 @@ async function handleHttp(req, res) {
           ? { id: openSession.id, name: openSession.name,
               engineId: openSession.engineId, missionId: openSession.missionId }
           : null,
+        owned: isOwner(req),
       });
     if (url.pathname === "/api/sessions")
       return json(
@@ -567,6 +594,7 @@ async function handleHttp(req, res) {
       return json({ events: "restored" });
     }
     if (url.pathname === "/api/admin/clear" && req.method === "POST") {
+      if (!needOwner(req, res)) return;
       // Clears both databases and engine wear ledgers.
       // Running mission restarts on the next sample.
       endMission("db cleared");
@@ -586,6 +614,7 @@ async function handleHttp(req, res) {
       return json({ status: "cleared" });
     }
     if (url.pathname === "/api/engine/reset" && req.method === "POST") {
+      if (!needOwner(req, res)) return;
       // Resets the active engine wear profile.
       // Missions and replays stay intact.
       const body = await readBody(req);
@@ -607,12 +636,13 @@ async function handleHttp(req, res) {
           .prepare("SELECT * FROM missions ORDER BY started_at DESC")
           .all(),
       );
-    // Twin controls proxied to the engine.
+    // Twin controls proxied to the engine. Owner console only.
     if (
       req.method === "POST" &&
       ["/api/start", "/api/stop", "/api/controls", "/api/env",
        "/api/fault", "/api/faults/clear", "/api/switch"].includes(url.pathname)
     ) {
+      if (!needOwner(req, res)) return;
       const body = await readBody(req);
       const twinPath = {
         "/api/start": "/engine/start",
@@ -665,9 +695,10 @@ async function handleHttp(req, res) {
       );
     }
     // Deletes one mission and its event logs.
-    // Refuses the live mission.
+    // Refuses the live mission. Owner console only.
     m = url.pathname.match(/^\/api\/replay\/([^/]+)$/);
     if (m && req.method === "DELETE") {
+      if (!needOwner(req, res)) return;
       const id = resolveMission(decodeURIComponent(m[1]));
       if ((openSession && openSession.missionId === id) ||
           (mission && mission.id === id))

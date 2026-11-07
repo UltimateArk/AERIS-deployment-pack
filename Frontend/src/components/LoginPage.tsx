@@ -29,7 +29,7 @@ export function LoginPage({
   const [missionsByEngine, setMissionsByEngine] = useState<Record<string, SessionRow[]>>({});
   const [engineNum, setEngineNum] = useState("01"); // digits only
   const [mission, setMission] = useState("");
-  const [openSession, setOpenSession] = useState<{ name: string; engineId: string } | null>(null);
+  const [openSession, setOpenSession] = useState<{ name: string; engineId: string; owned: boolean } | null>(null);
   const missionRef = useRef<HTMLInputElement>(null);
   const engineRef = useRef<HTMLInputElement>(null);
 
@@ -53,12 +53,18 @@ export function LoginPage({
   useEffect(() => {
     if (step !== "mission") return;
     loadFleet();
-    rest.sessionCurrent()
+    const check = () => rest.sessionCurrent()
       .then((r) => {
         const s = (r as { session?: { name: string; engineId: string } }).session;
-        setOpenSession(s ?? null);
+        const owned = (r as { owned?: boolean }).owned !== false;
+        setOpenSession(s ? { name: s.name, engineId: s.engineId, owned } : null);
       })
       .catch(() => {});
+    check();
+    // Re-check ownership while a foreign mission runs so the
+    // form unlocks itself the moment the mission ends.
+    const id = setInterval(check, 5000);
+    return () => clearInterval(id);
   }, [step]);
 
   function pickEngine(id: string) {
@@ -105,9 +111,18 @@ export function LoginPage({
           sessionId: out.sessionId!, name: out.name!, engineId: out.engineId!, missionId: out.missionId!,
         });
       } else {
-        const r = (await rest.sessionCurrent()) as { session?: { id: string; name: string; engineId: string; missionId: string } };
+        const r = (await rest.sessionCurrent()) as {
+          session?: { id: string; name: string; engineId: string; missionId: string };
+          owned?: boolean;
+        };
         const s = r.session;
         if (!s) { setErr("No open mission to resume."); setBusy(false); return; }
+        if (r.owned === false) {
+          setOpenSession({ name: s.name, engineId: s.engineId, owned: false });
+          setErr("That mission belongs to another console - wait for it to end.");
+          setBusy(false);
+          return;
+        }
         onEnter({ sessionId: s.id, name: s.name, engineId: s.engineId, missionId: s.missionId });
       }
     } catch (e) {
@@ -192,7 +207,7 @@ export function LoginPage({
               </form>
             ) : (
               <div className="flex flex-col gap-3 p-6">
-                {openSession && (
+                {openSession?.owned && (
                   <button
                     onClick={() => enter(true)}
                     className="w-full px-3 py-2 font-cond text-[13px] font-600 uppercase tracking-[0.12em] transition-colors hover:brightness-110"
@@ -200,7 +215,32 @@ export function LoginPage({
                     ▸ Resume open mission "{openSession.name}" · {openSession.engineId}
                   </button>
                 )}
-
+                {openSession && !openSession.owned ? (
+                  <div className="flex flex-col items-center gap-2 px-3 py-6 text-center"
+                       style={{ border: "1px dashed var(--color-caution)" }}>
+                    <span className="font-cond text-[15px] font-600 uppercase"
+                          style={{ color: "var(--color-caution)" }}>
+                      Mission "{openSession.name}" in progress
+                    </span>
+                    <span className="font-mono text-[12px] text-[var(--color-ink-2)]">
+                      {openSession.engineId} · owned by another console.
+                      New missions stay locked until it ends — this page
+                      refreshes automatically.
+                    </span>
+                    <button onClick={() => { loadFleet();
+                      rest.sessionCurrent()
+                        .then((r) => {
+                          const s = (r as { session?: { name: string; engineId: string } }).session;
+                          const owned = (r as { owned?: boolean }).owned !== false;
+                          setOpenSession(s ? { name: s.name, engineId: s.engineId, owned } : null);
+                        }).catch(() => {}); }}
+                      className="mt-1 px-3 py-1 font-cond text-[12px] font-600 uppercase tracking-[0.1em] hover:brightness-110"
+                      style={{ border: "1px solid var(--color-line)", background: "var(--color-panel-2)", color: "var(--color-ink)" }}>
+                      ⟳ Check again
+                    </button>
+                  </div>
+                ) : (
+                <>
                 {/* Engine number field. Digits only. */}
                 <label className="inline-flex w-fit items-center gap-1.5 px-2 py-0.5 font-cond text-[12px] font-600 uppercase tracking-[0.12em]" style={labelStyle}>
                   Engine No.
@@ -255,6 +295,8 @@ export function LoginPage({
                 <p className="text-center font-mono text-[11px] text-[var(--color-ink-2)]">
                   The engine starts on START ENGINE in the console. A mission ends only via END MISSION.
                 </p>
+                </>
+                )}
               </div>
             )}
           </div>

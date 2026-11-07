@@ -180,6 +180,10 @@ export function useTwinDirect() {
       for (const [k, v] of Object.entries(s)) {
         if (typeof v === "number") row[k] = v;
       }
+      // Late joiners and out-of-band stops: derive the running flag from live
+      // rpm so prop/wind/cooling animate for viewers that never pressed start.
+      // (Parked frames clear a stale flag further below.)
+      if (Number(row.rpm ?? 0) > 200 && !engineOnRef.current) setEngineOn(true);
       // Re-assert mission clock. Keeps graph x-axis stable within a mission.
       row.t = Number(s.mission_t ?? s.t ?? 0);
       const hz = (s as { health?: Record<string, number> }).health;
