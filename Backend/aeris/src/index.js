@@ -114,7 +114,7 @@ setInterval(() => {
 // Forwards controls to the engine service.
 // Backend holds no physics model.
 const ENGINE_REST = process.env.ENGINE_REST || "http://localhost:8000";
-function proxyJson(res, method, path, body) {
+function proxyJson(res, method, path, body, ms = 10000) {
   const data = body ? JSON.stringify(body) : null;
   const u = new URL(path, ENGINE_REST);
   const lib = u.protocol === "https:" ? require("https") : require("http");
@@ -128,6 +128,7 @@ function proxyJson(res, method, path, body) {
         "Content-Type": "application/json",
         ...(data ? { "Content-Length": Buffer.byteLength(data) } : {}),
       },
+      timeout: ms,
     },
     (rp) => {
       let buf = "";
@@ -141,6 +142,9 @@ function proxyJson(res, method, path, body) {
       });
     },
   );
+  rq.on("timeout", () => {
+    rq.destroy(new Error("engine timeout"));
+  });
   rq.on("error", (e) =>
     res.end(JSON.stringify({ error: "engine unreachable: " + e.message })),
   );

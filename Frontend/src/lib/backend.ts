@@ -11,6 +11,7 @@ const WS_URL =
 
 async function api(path: string, init?: RequestInit, retried = false): Promise<unknown> {
   const r = await fetch(API_BASE + path, {
+    signal: AbortSignal.timeout(10000),
     headers: { "Content-Type": "application/json", ...authHeaders(), ...(init?.headers ?? {}) },
     ...init,
   });

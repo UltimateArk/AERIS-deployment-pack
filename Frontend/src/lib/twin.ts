@@ -10,8 +10,9 @@ const TWIN_WS =
     ?.VITE_TWIN_WS as string | undefined) ??
   TWIN_BASE.replace(/^http/, "ws") + "/engine";
 
-async function twinApi(path: string, init?: RequestInit) {
+async function twinApi(path: string, init?: RequestInit, ms = 10000) {
   const r = await fetch(TWIN_BASE + path, {
+    signal: AbortSignal.timeout(ms),
     headers: { "Content-Type": "application/json" },
     ...init,
   });
@@ -166,9 +167,13 @@ export function useTwinDirect() {
       // Stop marker skips display.
       if (s.end_of_mission === true) return;
       // Parked heartbeats skip display. Console holds baseline until start and freezes after end.
+      // Parked while the console thinks the engine is on means it stopped
+      // out-of-band (auto-stop/watchdog) - drop the stale flag so the 3D
+      // rotor spools down instead of animating forever.
       if ((s as { parked?: boolean }).parked === true) {
         const eid = (s as { engineId?: string }).engineId;
         if (typeof eid === "string" && eid) setEngineId(eid);
+        if (engineOnRef.current) setEngineOn(false);
         return;
       };
       const row: Record<string, number> = { t: Number(s.mission_t ?? s.t ?? 0) };

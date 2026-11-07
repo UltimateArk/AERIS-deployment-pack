@@ -6,6 +6,9 @@ import { Engine3D } from "./engine3d/Engine3D";
 import { DEFAULTS, type SharedAnim, type Telemetry3D } from "./engine3d/types";
 
 // 3D reads twin frames on its own interval. Canvas subtree skips per-tick re-renders.
+// Parked/end-of-mission frames are skipped so the model holds its last live
+// state after stop instead of tracking the cooldown transient or flashing
+// to defaults on the sparse end-of-mission marker.
 function EngineVisual({ frameRef, engineOnRef, dark, shared }: {
   frameRef: React.RefObject<TwinFrame | null>;
   engineOnRef: React.RefObject<boolean>;
@@ -16,9 +19,10 @@ function EngineVisual({ frameRef, engineOnRef, dark, shared }: {
   useEffect(() => {
     const id = setInterval(() => {
       const s = frameRef.current;
-      if (s && typeof s === "object" && !Array.isArray(s)) {
-        snapRef.current = { ...DEFAULTS, ...(s as Record<string, unknown>) } as Telemetry3D;
-      }
+      if (!s || typeof s !== "object" || Array.isArray(s)) return;
+      if (s.parked === true || s.end_of_mission === true) return;
+      if (typeof (s as { rpm?: unknown }).rpm !== "number") return;
+      snapRef.current = { ...DEFAULTS, ...(s as Record<string, unknown>) } as Telemetry3D;
     }, 80);
     return () => clearInterval(id);
   }, [frameRef]);
