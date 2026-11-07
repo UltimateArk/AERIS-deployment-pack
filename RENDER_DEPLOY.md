@@ -1,51 +1,41 @@
 # Hosting AERIS on Render (free) — split setup
 
-You asked me to host it. I can't create Render/Vercel accounts for you,
-but the repo is now deploy-ready. Follow these 10 minutes of clicks.
+Repo is deploy-ready. You still have to click Deploy in Render —
+I have no access to your Render dashboard.
 
-## What I changed for hosting
+## What is ready
 
-- `Backend/aeris/src/config.js` — respects `$PORT`. When only `$PORT` is set
-  (Render), ingest + frontend share one port (single-port mode).
-- `Backend/aeris/src/index.js` — frontend WS on `/`, twin ingest WS on
-  `/ingest` when `INGEST_PORT == HTTP_PORT`. Local 2-port `:8080/:8081`
-  behavior unchanged.
-- `Backend/api.py` — `__main__` respects `$PORT`.
-- `render.yaml` — 4-service blueprint (twin, backend, bridge, console).
+- `render.yaml` — 3-service blueprint: `aeris-twin`, `aeris-backend`
+  (backend+bridge in one free service), `aeris-console`.
+- `Backend/aeris/src/config.js` + `src/index.js` — single-port mode:
+  frontend WS `/` + ingest WS `/ingest` on one `$PORT`.
+- `Backend/api.py` — respects `$PORT`.
 
-## Deploy steps
+## Steps in your open Render dashboard
 
-1. Push this repo to GitHub (include `render.yaml`, `ML_Models/`, `Database/`,
-   `Frontend/`, `Backend/`).
-2. Render Dashboard > New > Blueprint > select repo. Render creates:
-   `aeris-twin`, `aeris-backend`, `aeris-bridge`, `aeris-console`.
-   First deploy will fail URL wiring — expected.
-3. After URLs exist, update env vars (Render Dashboard > service > Environment):
-   - `aeris-backend`: `ENGINE_REST=https://<your-twin>.onrender.com`
-   - `aeris-bridge`: `ENGINE_WS=wss://<your-twin>.onrender.com/engine`,
-     `INGEST_WS=wss://<your-backend>.onrender.com/ingest`
-   - `aeris-console` (static): `VITE_API_BASE=https://<your-backend>.onrender.com`,
-     `VITE_WS_URL=wss://<your-backend>.onrender.com/`,
-     `VITE_TWIN_BASE=https://<your-twin>.onrender.com`,
-     `VITE_TWIN_WS=wss://<your-twin>.onrender.com/engine`
-   - Redeploy each after editing (Manual Deploy > Deploy latest commit for
-     static to bake VITE_* at build time).
-4. Open `https://<your-console>.onrender.com`, login `pilot / aeris`.
+1. New > Blueprint > select this repo. Render detects `render.yaml`.
+   Click Apply. First deploy uses placeholder `*.onrender.com` URLs.
+2. Wait for service URLs (each service gets `https://<name>-xxxx.onrender.com`).
+   Rename if yours differ from `aeris-twin` / `aeris-backend`.
+3. Update env vars (service > Environment > Edit, `sync: false` means
+   Render prompts you — paste real URLs):
+   - `aeris-backend`: `ENGINE_REST=https://<your-twin>`,
+     `ENGINE_WS=wss://<your-twin>/engine`
+   - `aeris-console`: `VITE_API_BASE=https://<your-backend>`,
+     `VITE_WS_URL=wss://<your-backend>/`,
+     `VITE_TWIN_BASE=https://<your-twin>`,
+     `VITE_TWIN_WS=wss://<your-twin>/engine`
+4. Manual Deploy > Deploy latest commit on `aeris-backend`, then
+   `aeris-console` (VITE_* bakes at build time, so console must rebuild
+   after env edit).
+5. Open console URL, login `pilot / aeris`, START ENGINE.
+
+Check health first: `https://<twin>/health` and `https://<backend>/health`.
+Bridge logs `fwd X frames (Y/s)` ~10/s in backend logs.
 
 ## Free-tier caveats
 
-- Sleep: free web services sleep after inactivity. First load takes ~60s.
-  Twin 100 Hz loop + ONNX burn free hours fast — suspend when not demoing.
-- No disk: SQLite `data/*.db` and `Backend/wear/*.json` are ephemeral on
-  Render free. Missions/replays vanish on restart. Paid disks fix this.
-- Native builds: `better-sqlite3@13` + `onnxruntime-node@1.30` build on
-  Node 22 (`NODE_VERSION=22` already set in `render.yaml`).
-- Bridge logs `fwd X frames (Y/s)` every 30s — expect ~10/s.
-
-## Local check before pushing
-
-```bash
-# aeris single-port smoke (simulates Render $PORT)
-PORT=18081 node Backend/aeris/src/index.js
-# expect: "[http/ws] single-port :18081 (frontend ws / + ingest ws /ingest)"
-```
+- Sleep: first load ~60s. Twin 100 Hz burns free hours — suspend when idle.
+- No disk: SQLite + `wear/*.json` ephemeral. Replays vanish on restart.
+- Node 22 pinned (`NODE_VERSION=22`) for `better-sqlite3@13` +
+  `onnxruntime-node@1.30`.
