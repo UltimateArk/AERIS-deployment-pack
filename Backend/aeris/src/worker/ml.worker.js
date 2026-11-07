@@ -59,6 +59,8 @@ let lastBurnMult = 1; // burn multiplier at latest sample
 let missionStartMs = 0; // mission start time, ms
 let curEngine = "ENG-01";
 let lastCodes = [];
+let lastMags = {};
+let lastCyl = {};
 
 // Duty term ranges 0.6 at loiter to 1.3 at max.
 function dutyRate(rpm, load) {
@@ -180,6 +182,24 @@ async function runFast(ts) {
     );
   }
   cands.sort((u, v) => v.calibrated - u.calibrated || v.p - u.p);
+  // Fallback when ONNX classifiers are missing/invalid (e.g. LFS pointers).
+  // Twin ground truth (injected faults + magnitudes) seeds the cards so the
+  // console still responds to injection. Real models override once uploaded.
+  if (!cands.length && Object.keys(clfs).length === 0 && lastCodes.length) {
+    for (const code of lastCodes) {
+      const raw = lastMags?.[String(code)];
+      const p = Number.isFinite(+raw) ? Math.max(0, Math.min(1, +raw)) : 0.9;
+      if (p >= (calib.thresholds[code - 1] ?? 0.5)) {
+        const cylRaw = lastCyl?.[String(code)];
+        cands.push({
+          code, p, calibrated: calibrate(code, p),
+          cylinder: Number.isFinite(+cylRaw) ? +cylRaw : undefined,
+          twinReported: true,
+        });
+      }
+    }
+    cands.sort((u, v) => v.calibrated - u.calibrated || v.p - u.p);
+  }
   // Logs raw scores for injected faults at 1 Hz.
   if (lastCodes.length) {
     const byCode = Object.fromEntries(cands.map((c) => [c.code, c.p]));
@@ -204,6 +224,8 @@ async function runFast(ts) {
       subsystem: c.subsystem ?? null,
     };
     if (t.code === 1 || t.code === 2) {
+      // Twin-reported cylinder wins when present (fallback path).
+      if (Number.isFinite(+t.cylinder)) { e.cylinder = +t.cylinder; return e; }
       // Cylinder with largest EGT deviation.
       let k = 1,
         m = 0;
@@ -318,6 +340,8 @@ function onSample(sample) {
   const ts = sample.ts;
   if (sample.engineId) curEngine = sample.engineId;
   lastCodes = (sample?.faultCodes ?? []).filter((c) => c > 0);
+  lastMags = sample?.faultMag ?? {};
+  lastCyl = sample?.faultCyl ?? {};
   // Integrates burn rate each tick from fault codes and magnitudes.
   if (lastLifeTs > 0) {
     const dtH = (ts - lastLifeTs) / 3.6e6; // ms to hours
